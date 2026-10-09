@@ -306,8 +306,31 @@
     </main>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyD_GP3o-lmoj2Wm2BgTXWPxdZBX5yGlUuE",
+      authDomain: "treasury-steps-challenge.firebaseapp.com",
+      projectId: "treasury-steps-challenge",
+      storageBucket: "treasury-steps-challenge.firebasestorage.app",
+      messagingSenderId: "910382240708",
+      appId: "1:910382240708:web:e83e5b692662d0ccbdca91"
+    };
+
     const STORAGE_KEY = "treasury-steps-challenge.single-file.state";
+    const COLLECTIONS = {
+      profiles: "profiles",
+      logs: "logs"
+    };
+
+    function isFirebaseConfigured() {
+      return Object.values(FIREBASE_CONFIG).every((value) => typeof value === "string" && value.length > 0 && !value.startsWith("YOUR_"));
+    }
+
+    const useFirestore = isFirebaseConfigured();
+    const db = useFirestore ? getFirestore(initializeApp(FIREBASE_CONFIG)) : null;
 
     function createId(prefix) {
       if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -324,7 +347,23 @@
       return new Date().toISOString().slice(0, 10);
     }
 
-    function loadData() {
+    function getNowIso() {
+      return new Date().toISOString();
+    }
+
+    function getRandomSalt() {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function hashPin(pin, salt) {
+      const encoder = new TextEncoder();
+      const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`${salt}:${String(pin || "").trim()}`));
+      return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    function loadLocalData() {
       try {
         const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
         return {
@@ -336,8 +375,46 @@
       }
     }
 
-    function saveData(data) {
+    function saveLocalData(data) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    async function loadData() {
+      if (!db) {
+        return loadLocalData();
+      }
+
+      const [profilesSnapshot, logsSnapshot] = await Promise.all([
+        getDocs(collection(db, COLLECTIONS.profiles)),
+        getDocs(collection(db, COLLECTIONS.logs))
+      ]);
+
+      return {
+        profiles: profilesSnapshot.docs
+          .map((entry) => ({ id: entry.id, ...entry.data() }))
+          .sort((left, right) => left.name.localeCompare(right.name)),
+        logs: logsSnapshot.docs
+          .map((entry) => ({ id: entry.id, ...entry.data() }))
+          .sort((left, right) => String(right.createdAt || "").localeCompare(String(left.createdAt || "")))
+      };
+    }
+
+    async function persistProfile(profile) {
+      if (!db) {
+        saveLocalData(state.data);
+        return;
+      }
+
+      await setDoc(doc(db, COLLECTIONS.profiles, profile.id), profile);
+    }
+
+    async function persistLog(log) {
+      if (!db) {
+        saveLocalData(state.data);
+        return;
+      }
+
+      await setDoc(doc(db, COLLECTIONS.logs, log.id), log);
     }
 
     function buildIndividualLeaderboard(logs) {
@@ -402,12 +479,12 @@
     }
 
     const state = {
-      data: loadData(),
+      data: { profiles: [], logs: [] },
       activeTab: "access",
       loggedInProfileId: "",
       loginTeam: "",
       loginProfileId: "",
-      statusText: "Create a profile or log in to start.",
+      statusText: useFirestore ? "Create a profile or log in to start." : "Create a profile or log in to start. Firebase config is still using local mode.",
       logDate: getTodayValue()
     };
 
@@ -546,7 +623,6 @@
     }
 
     function render() {
-      saveData(state.data);
       populateTeams();
       renderSummary();
       renderTables();
@@ -555,22 +631,34 @@
       showTab(state.activeTab);
     }
 
-    function upsertProfile(name, team, pin) {
+    async function upsertProfile(name, team, pin) {
       const normalizedKey = `${normalizeValue(name)}::${normalizeValue(team)}`;
       const existing = state.data.profiles.find((profile) => `${normalizeValue(profile.name)}::${normalizeValue(profile.team)}` === normalizedKey);
+      const now = getNowIso();
+      const pinSalt = getRandomSalt();
+      const pinHash = await hashPin(pin, pinSalt);
+
       if (existing) {
         existing.name = name.trim();
         existing.team = team.trim();
-        existing.pin = String(pin).trim();
+        existing.pinSalt = pinSalt;
+        existing.pinHash = pinHash;
+        existing.updatedAt = now;
+        await persistProfile(existing);
         return existing;
       }
+
       const newProfile = {
         id: createId("profile"),
         name: name.trim(),
         team: team.trim(),
-        pin: String(pin).trim()
+        pinSalt,
+        pinHash,
+        createdAt: now,
+        updatedAt: now
       };
       state.data.profiles.unshift(newProfile);
+      await persistProfile(newProfile);
       return newProfile;
     }
 
@@ -584,13 +672,23 @@
       el.loginPin.value = "";
       el.loginPin.disabled = true;
       el.logSteps.value = "";
-      state.statusText = "Create a profile or log in to start.";
+      state.statusText = useFirestore ? "Create a profile or log in to start." : "Create a profile or log in to start. Firebase config is still using local mode.";
       state.activeTab = "access";
       render();
     }
 
+    async function refreshFromSource() {
+      state.data = await loadData();
+      render();
+    }
+
     document.querySelectorAll(".tab-button").forEach((button) => {
-      button.addEventListener("click", () => showTab(button.dataset.tab));
+      button.addEventListener("click", async () => {
+        if (useFirestore) {
+          await refreshFromSource();
+        }
+        showTab(button.dataset.tab);
+      });
     });
 
     el.logoutButton.addEventListener("click", logoutToAccess);
@@ -604,7 +702,7 @@
       el.loginPin.disabled = !state.loginProfileId;
     });
 
-    el.createProfileForm.addEventListener("submit", (event) => {
+    el.createProfileForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
       const name = String(form.get("name") || "").trim();
@@ -623,13 +721,16 @@
         return;
       }
 
-      const profile = upsertProfile(name, team, pin);
+      const profile = await upsertProfile(name, team, pin);
       state.loggedInProfileId = profile.id;
       state.loginTeam = profile.team;
       state.loginProfileId = profile.id;
       state.statusText = `${profile.name} is ready to log steps.`;
       state.activeTab = "log";
       event.currentTarget.reset();
+      if (useFirestore) {
+        await refreshFromSource();
+      }
       populateProfilesForTeam(profile.team);
       el.loginTeam.value = profile.team;
       el.loginProfile.value = profile.id;
@@ -637,7 +738,7 @@
       render();
     });
 
-    el.loginForm.addEventListener("submit", (event) => {
+    el.loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const selectedProfile = state.data.profiles.find((profile) => profile.id === state.loginProfileId);
       const pin = String(el.loginPin.value || "").trim();
@@ -660,7 +761,8 @@
         return;
       }
 
-      if (selectedProfile.pin !== pin) {
+      const computedHash = await hashPin(pin, selectedProfile.pinSalt || "");
+      if (selectedProfile.pinHash !== computedHash) {
         state.statusText = "Incorrect PIN. Try again.";
         render();
         return;
@@ -673,7 +775,7 @@
       render();
     });
 
-    el.logForm.addEventListener("submit", (event) => {
+    el.logForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const activeProfile = getActiveProfile();
       const parsedSteps = Number(el.logSteps.value);
@@ -690,14 +792,21 @@
         return;
       }
 
-      state.data.logs.unshift({
+      const newLog = {
         id: createId("log"),
         profileId: activeProfile.id,
         name: activeProfile.name,
         team: activeProfile.team,
         date: el.logDate.value,
-        steps: parsedSteps
-      });
+        steps: parsedSteps,
+        createdAt: getNowIso()
+      };
+
+      state.data.logs.unshift(newLog);
+      await persistLog(newLog);
+      if (useFirestore) {
+        await refreshFromSource();
+      }
 
       el.logSteps.value = "";
       state.statusText = `Logged ${stepsFormat(parsedSteps)} steps for ${activeProfile.name}.`;
@@ -709,7 +818,23 @@
       state.logDate = event.target.value;
     });
 
-    render();
+    if (useFirestore) {
+      window.setInterval(async () => {
+        try {
+          await refreshFromSource();
+        } catch (error) {
+          console.error("Auto-refresh failed", error);
+        }
+      }, 20000);
+    }
+
+    try {
+      state.data = await loadData();
+      render();
+    } catch (error) {
+      state.statusText = `Unable to load data: ${error.message}`;
+      render();
+    }
   </script>
 </body>
 </html>
