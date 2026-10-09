@@ -258,6 +258,15 @@
       </section>
 
       <section id="leaderboard-tab" class="leaderboard-shell" hidden>
+        <section class="panel panel--compact panel--toolbar">
+          <div>
+            <p class="section-kicker">Export</p>
+            <h2>Download competition workbook</h2>
+            <p class="panel__subtle">Exports individual leaderboard, team leaderboard, and the raw log data into one Excel file.</p>
+          </div>
+          <button type="button" class="primary-button primary-button--auto" id="export-button">Export workbook</button>
+        </section>
+
         <div class="metric-grid">
           <article class="metric-card"><span class="metric-card__label">Total steps</span><strong class="metric-card__value metric-card__value--teal" id="metric-total">0</strong><span class="metric-card__helper">Across every submitted log</span></article>
           <article class="metric-card"><span class="metric-card__label">Participants</span><strong class="metric-card__value metric-card__value--gold" id="metric-participants">0</strong><span class="metric-card__helper">Unique people on the board</span></article>
@@ -309,6 +318,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
     import { getFirestore, collection, doc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+    import * as XLSX from "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm";
 
     const FIREBASE_CONFIG = {
       apiKey: "AIzaSyD_GP3o-lmoj2Wm2BgTXWPxdZBX5yGlUuE",
@@ -478,6 +488,65 @@
       return Number(value || 0).toLocaleString("en-GB");
     }
 
+    function buildLeaderboardExportRows() {
+      const individual = buildIndividualLeaderboard(state.data.logs).map((row, index) => ({
+        rank: index + 1,
+        name: row.name,
+        team: row.team,
+        totalSteps: row.totalSteps,
+        daysLogged: row.entries,
+        averagePerDay: row.averagePerDay
+      }));
+
+      const team = buildTeamLeaderboard(state.data.logs).map((row, index) => ({
+        rank: index + 1,
+        team: row.team,
+        totalSteps: row.totalSteps,
+        members: row.memberCount,
+        activityDays: row.entries
+      }));
+
+      const raw = [...state.data.logs]
+        .sort((left, right) => String(right.createdAt || "").localeCompare(String(left.createdAt || "")))
+        .map((log, index) => ({
+          row: index + 1,
+          date: log.date || "",
+          name: log.name || "",
+          team: log.team || "",
+          steps: Number(log.steps || 0),
+          createdAt: log.createdAt || "",
+          profileId: log.profileId || "",
+          logId: log.id || ""
+        }));
+
+      return { individual, team, raw };
+    }
+
+    function exportWorkbook() {
+      const { individual, team, raw } = buildLeaderboardExportRows();
+      const workbook = XLSX.utils.book_new();
+
+      const individualSheet = XLSX.utils.aoa_to_sheet([
+        ["Rank", "Colleague", "Team", "Total steps", "Days logged", "Average per day"],
+        ...individual.map((row) => [row.rank, row.name, row.team, row.totalSteps, row.daysLogged, row.averagePerDay])
+      ]);
+      const teamSheet = XLSX.utils.aoa_to_sheet([
+        ["Rank", "Team", "Total steps", "Members", "Activity days"],
+        ...team.map((row) => [row.rank, row.team, row.totalSteps, row.members, row.activityDays])
+      ]);
+      const rawSheet = XLSX.utils.aoa_to_sheet([
+        ["Row", "Date", "Name", "Team", "Steps", "Created at", "Profile ID", "Log ID"],
+        ...raw.map((row) => [row.row, row.date, row.name, row.team, row.steps, row.createdAt, row.profileId, row.logId])
+      ]);
+
+      XLSX.utils.book_append_sheet(workbook, individualSheet, "Individual Leaderboard");
+      XLSX.utils.book_append_sheet(workbook, teamSheet, "Team Leaderboard");
+      XLSX.utils.book_append_sheet(workbook, rawSheet, "Raw data log");
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `treasury-steps-challenge-export-${stamp}.xlsx`);
+    }
+
     const state = {
       data: { profiles: [], logs: [] },
       activeTab: "access",
@@ -511,7 +580,8 @@
       metricFront: document.getElementById("metric-front"),
       metricSub: document.getElementById("metric-sub"),
       individualBody: document.getElementById("individual-body"),
-      teamBody: document.getElementById("team-body")
+      teamBody: document.getElementById("team-body"),
+      exportButton: document.getElementById("export-button")
     };
 
     function getActiveProfile() {
@@ -688,6 +758,14 @@
     });
 
     el.logoutButton.addEventListener("click", logoutToAccess);
+    el.exportButton.addEventListener("click", () => {
+      try {
+        exportWorkbook();
+      } catch (error) {
+        state.statusText = `Export failed: ${error.message}`;
+        render();
+      }
+    });
 
     el.loginTeam.addEventListener("change", (event) => {
       populateProfilesForTeam(event.target.value);
