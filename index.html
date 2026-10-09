@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Treasury Steps Challenge</title>
+  <meta name="description" content="Treasury Steps Challenge single-file app for static hosting." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-0: #08111f;
+      --bg-1: #0d1930;
+      --panel: rgba(12, 20, 38, 0.78);
+      --border: rgba(181, 206, 255, 0.16);
+      --text: #f4f8ff;
+      --muted: #a7b8d7;
+      --teal: #63e6be;
+      --gold: #ffd166;
+      --indigo: #9fa8ff;
+      --rose: #ff7aa2;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(99, 230, 190, 0.18), transparent 28%),
+        radial-gradient(circle at 88% 14%, rgba(159, 168, 255, 0.16), transparent 26%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+      color: var(--text);
+      font-family: "SC Prosper Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+
+    .app-shell {
+      position: relative;
+      min-height: 100vh;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .background-orb {
+      position: fixed;
+      z-index: 0;
+      border-radius: 999px;
+      filter: blur(12px);
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    .background-orb--one { top: -60px; left: -40px; width: 260px; height: 260px; background: radial-gradient(circle, rgba(99, 230, 190, 0.5), transparent 72%); }
+    .background-orb--two { right: -40px; bottom: -80px; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255, 122, 162, 0.35), transparent 72%); }
+
+    .dashboard { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; display: grid; gap: 24px; }
+    .page-header, .metric-card, .panel, .top-tabs, .logout-card {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .page-header { padding: 28px 30px; }
+    .page-header h1 { margin: 0; font-size: clamp(2.25rem, 5vw, 4.5rem); line-height: 0.95; letter-spacing: -0.04em; }
+    .eyebrow, .section-kicker { margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.72rem; color: var(--teal); }
+    .panel__subtle, .status-text, .metric-card__helper, .field span, .panel-card__header span, .empty-inline, .active-profile-card span { color: var(--muted); line-height: 1.6; }
+
+    .dashboard-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .top-tabs, .view-switcher { display: inline-flex; gap: 10px; padding: 8px; border-radius: 999px; width: fit-content; }
+    .tab-button, .logout-card {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      cursor: pointer;
+      color: var(--muted);
+      background: transparent;
+    }
+    .tab-button--active { background: linear-gradient(135deg, rgba(99, 230, 190, 0.22), rgba(159, 168, 255, 0.2)); color: var(--text); }
+    .logout-card { color: var(--text); background: rgba(255, 255, 255, 0.03); min-width: 140px; }
+
+    .metric-grid, .leaderboard-grid, .auth-grid, .log-view { display: grid; gap: 18px; }
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .leaderboard-grid, .auth-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .log-view { grid-template-columns: 1fr; }
+
+    .panel, .metric-card { padding: 22px; }
+    .panel--highlight { background: linear-gradient(160deg, rgba(18, 32, 58, 0.96), rgba(13, 22, 41, 0.9)); }
+    .panel--stacked { display: grid; gap: 20px; }
+    .panel__heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+    .panel__heading--table { align-items: end; }
+    .panel__heading h2, .panel__heading h3 { margin: 0; }
+    .panel__badge { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-size: 0.85rem; }
+    .panel__badge--warm { color: #ffcf91; }
+
+    .panel-card {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(181, 206, 255, 0.12);
+      background: rgba(7, 13, 25, 0.45);
+    }
+    .panel-card__header { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .form-grid--wide { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; }
+    .field { display: grid; gap: 8px; }
+    .field--full { grid-column: 1 / -1; }
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(181, 206, 255, 0.16);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background: rgba(7, 13, 25, 0.72);
+      color: var(--text);
+      outline: none;
+    }
+    input:disabled, select:disabled { opacity: 0.5; }
+    .primary-button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, rgba(99, 230, 190, 0.95), rgba(159, 168, 255, 0.92));
+      color: #07111f;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary-button--wide { width: 100%; }
+
+    .active-profile-card, .empty-inline, .empty-state {
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(7, 13, 25, 0.55);
+      border: 1px solid rgba(181, 206, 255, 0.12);
+    }
+    .active-profile-card { display: grid; gap: 4px; }
+    .table-wrap { overflow-x: auto; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 16px 14px; border-bottom: 1px solid rgba(181, 206, 255, 0.12); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
+    td strong { display: block; margin-bottom: 4px; }
+    td span { color: var(--muted); }
+    .rank-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; padding: 6px 10px; border-radius: 999px; background: rgba(99, 230, 190, 0.14); color: var(--teal); }
+    .table-row--top { background: rgba(99, 230, 190, 0.06); }
+
+    .metric-card { display: grid; gap: 10px; min-height: 160px; }
+    .metric-card__value { font-size: clamp(1.9rem, 4vw, 3rem); letter-spacing: -0.04em; }
+    .metric-card__value--teal { color: var(--teal); }
+    .metric-card__value--gold { color: var(--gold); }
+    .metric-card__value--indigo { color: var(--indigo); }
+    .metric-card__value--rose { color: var(--rose); }
+
+    @media (max-width: 1100px) {
+      .metric-grid, .leaderboard-grid, .auth-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell { padding: 16px; }
+      .dashboard-bar { flex-direction: column; align-items: stretch; }
+      .top-tabs { width: 100%; justify-content: stretch; }
+      .tab-button { flex: 1; }
+      .logout-card { width: 100%; }
+      .form-grid, .form-grid--wide { grid-template-columns: 1fr; }
+      .page-header, .panel, .metric-card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="background-orb background-orb--one"></div>
+    <div class="background-orb background-orb--two"></div>
+
+    <main class="dashboard">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Treasury wellbeing challenge</p>
+          <h1>Treasury Steps Challenge</h1>
+        </div>
+      </header>
+
+      <section id="dashboard-tabs" class="dashboard-bar" aria-label="Dashboard navigation" hidden>
+        <div class="top-tabs">
+          <button type="button" class="tab-button tab-button--active" data-tab="log">Log exercise</button>
+          <button type="button" class="tab-button" data-tab="leaderboards">Leaderboards</button>
+        </div>
+        <button type="button" class="logout-card" id="logout-button">Log out</button>
+      </section>
+
+      <section id="access-tab" class="log-view">
+        <div class="auth-grid">
+          <form id="create-profile-form" class="panel-card">
+            <div class="panel-card__header">
+              <h3>Create profile</h3>
+              <span>First-time users</span>
+            </div>
+            <div class="form-grid">
+              <label class="field"><span>Name</span><input name="name" type="text" placeholder="Enter colleague name" autocomplete="name" required /></label>
+              <label class="field"><span>Team</span><input name="team" type="text" placeholder="Enter team name" autocomplete="organization" required /></label>
+              <label class="field field--full"><span>PIN</span><input name="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Choose a 4-8 digit PIN" autocomplete="new-password" required /></label>
+              <button class="primary-button primary-button--wide" type="submit">Save profile</button>
+            </div>
+          </form>
+
+          <form id="login-form" class="panel-card">
+            <div class="panel-card__header">
+              <h3>Log in</h3>
+              <span>Returning users</span>
+            </div>
+            <div class="form-grid">
+              <label class="field field--full">
+                <span>Select your team</span>
+                <select id="login-team" required>
+                  <option value="">Choose a team</option>
+                </select>
+              </label>
+              <label class="field field--full">
+                <span>Select your profile</span>
+                <select id="login-profile" required disabled>
+                  <option value="">Choose a saved profile</option>
+                </select>
+              </label>
+              <label class="field field--full">
+                <span>PIN</span>
+                <input id="login-pin" type="password" inputmode="numeric" maxlength="8" placeholder="Enter your PIN" autocomplete="current-password" required disabled />
+              </label>
+              <button class="primary-button primary-button--wide" type="submit">Enter dashboard</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="log-tab" class="log-view" hidden>
+        <section class="panel panel--stacked panel--highlight">
+          <div class="panel__heading">
+            <div>
+              <p class="section-kicker">Log daily activity</p>
+              <h2>Exercise log</h2>
+            </div>
+            <span class="panel__badge panel__badge--warm">Single-file app</span>
+          </div>
+
+          <div id="active-profile" class="active-profile-card empty-inline">Log in to enable step entry.</div>
+
+          <form id="log-form" class="form-grid form-grid--wide">
+            <label class="field"><span>Date</span><input id="log-date" type="date" required /></label>
+            <label class="field"><span>Steps</span><input id="log-steps" type="number" min="0" step="1" placeholder="12000" required disabled /></label>
+            <button id="log-submit" class="primary-button" type="submit" disabled>Submit activity</button>
+          </form>
+
+          <p id="status-text" class="status-text">Create a profile or log in to start.</p>
+        </section>
+      </section>
+
+      <section id="leaderboard-tab" class="leaderboard-shell" hidden>
+        <div class="metric-grid">
+          <article class="metric-card"><span class="metric-card__label">Total steps</span><strong class="metric-card__value metric-card__value--teal" id="metric-total">0</strong><span class="metric-card__helper">Across every submitted log</span></article>
+          <article class="metric-card"><span class="metric-card__label">Participants</span><strong class="metric-card__value metric-card__value--gold" id="metric-participants">0</strong><span class="metric-card__helper">Unique people on the board</span></article>
+          <article class="metric-card"><span class="metric-card__label">Teams</span><strong class="metric-card__value metric-card__value--indigo" id="metric-teams">0</strong><span class="metric-card__helper">Teams currently represented</span></article>
+          <article class="metric-card"><span class="metric-card__label">Front-runner</span><strong class="metric-card__value metric-card__value--rose" id="metric-front">None yet</strong><span class="metric-card__helper" id="metric-sub">Add logs to start the challenge</span></article>
+        </div>
+
+        <div class="leaderboard-grid">
+          <section class="panel">
+            <div class="panel__heading panel__heading--table">
+              <div>
+                <p class="section-kicker">Leaderboard</p>
+                <h2>Individual leaderboard</h2>
+              </div>
+              <p class="panel__subtle">Ranked by total steps per colleague.</p>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Rank</th><th>Colleague</th><th>Total steps</th><th>Days logged</th><th>Average per day</th></tr>
+                </thead>
+                <tbody id="individual-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel__heading panel__heading--table">
+              <div>
+                <p class="section-kicker">Leaderboard</p>
+                <h2>Team leaderboard</h2>
+              </div>
+              <p class="panel__subtle">Ranked by total steps per team.</p>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Rank</th><th>Team</th><th>Total steps</th><th>Members</th><th>Activity days</th></tr>
+                </thead>
+                <tbody id="team-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "treasury-steps-challenge.single-file.state";
+
+    function createId(prefix) {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return `${prefix}-${crypto.randomUUID()}`;
+      }
+      return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function normalizeValue(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function getTodayValue() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function loadData() {
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
+        return {
+          profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
+          logs: Array.isArray(parsed.logs) ? parsed.logs : []
+        };
+      } catch {
+        return { profiles: [], logs: [] };
+      }
+    }
+
+    function saveData(data) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function buildIndividualLeaderboard(logs) {
+      const grouped = new Map();
+      logs.forEach((log) => {
+        const existing = grouped.get(log.profileId) || {
+          id: log.profileId,
+          name: log.name,
+          team: log.team,
+          entries: 0,
+          totalSteps: 0
+        };
+        existing.entries += 1;
+        existing.totalSteps += Number(log.steps || 0);
+        grouped.set(log.profileId, existing);
+      });
+      return [...grouped.values()]
+        .map((row) => ({ ...row, averagePerDay: row.entries ? Math.round(row.totalSteps / row.entries) : 0 }))
+        .sort((a, b) => b.totalSteps - a.totalSteps || a.name.localeCompare(b.name));
+    }
+
+    function buildTeamLeaderboard(logs) {
+      const grouped = new Map();
+      logs.forEach((log) => {
+        const existing = grouped.get(log.team) || {
+          id: log.team,
+          team: log.team,
+          entries: 0,
+          totalSteps: 0,
+          members: new Set()
+        };
+        existing.entries += 1;
+        existing.totalSteps += Number(log.steps || 0);
+        existing.members.add(log.profileId);
+        grouped.set(log.team, existing);
+      });
+      return [...grouped.values()]
+        .map((row) => ({
+          id: row.id,
+          team: row.team,
+          entries: row.entries,
+          totalSteps: row.totalSteps,
+          memberCount: row.members.size
+        }))
+        .sort((a, b) => b.totalSteps - a.totalSteps || a.team.localeCompare(b.team));
+    }
+
+    function getSummary(logs) {
+      const individual = buildIndividualLeaderboard(logs);
+      const team = buildTeamLeaderboard(logs);
+      return {
+        totalSteps: logs.reduce((sum, log) => sum + Number(log.steps || 0), 0),
+        participants: individual.length,
+        teams: team.length,
+        leadingIndividual: individual[0] || null,
+        leadingTeam: team[0] || null
+      };
+    }
+
+    function stepsFormat(value) {
+      return Number(value || 0).toLocaleString("en-GB");
+    }
+
+    const state = {
+      data: loadData(),
+      activeTab: "access",
+      loggedInProfileId: "",
+      loginTeam: "",
+      loginProfileId: "",
+      statusText: "Create a profile or log in to start.",
+      logDate: getTodayValue()
+    };
+
+    const el = {
+      accessTab: document.getElementById("access-tab"),
+      logTab: document.getElementById("log-tab"),
+      leaderboardTab: document.getElementById("leaderboard-tab"),
+      dashboardTabs: document.getElementById("dashboard-tabs"),
+      logoutButton: document.getElementById("logout-button"),
+      createProfileForm: document.getElementById("create-profile-form"),
+      loginForm: document.getElementById("login-form"),
+      loginTeam: document.getElementById("login-team"),
+      loginProfile: document.getElementById("login-profile"),
+      loginPin: document.getElementById("login-pin"),
+      activeProfile: document.getElementById("active-profile"),
+      logForm: document.getElementById("log-form"),
+      logDate: document.getElementById("log-date"),
+      logSteps: document.getElementById("log-steps"),
+      logSubmit: document.getElementById("log-submit"),
+      statusText: document.getElementById("status-text"),
+      metricTotal: document.getElementById("metric-total"),
+      metricParticipants: document.getElementById("metric-participants"),
+      metricTeams: document.getElementById("metric-teams"),
+      metricFront: document.getElementById("metric-front"),
+      metricSub: document.getElementById("metric-sub"),
+      individualBody: document.getElementById("individual-body"),
+      teamBody: document.getElementById("team-body")
+    };
+
+    function getActiveProfile() {
+      return state.data.profiles.find((profile) => profile.id === state.loggedInProfileId) || null;
+    }
+
+    function showTab(tab) {
+      state.activeTab = tab;
+      el.accessTab.hidden = tab !== "access";
+      el.logTab.hidden = tab !== "log";
+      el.leaderboardTab.hidden = tab !== "leaderboards";
+      el.dashboardTabs.hidden = tab === "access";
+      document.querySelectorAll(".tab-button").forEach((button) => {
+        button.classList.toggle("tab-button--active", button.dataset.tab === tab);
+      });
+    }
+
+    function setStatus(message) {
+      state.statusText = message;
+      el.statusText.textContent = message;
+    }
+
+    function populateTeams() {
+      const teams = [...new Set(state.data.profiles.map((profile) => profile.team))].sort((a, b) => a.localeCompare(b));
+      el.loginTeam.innerHTML = '<option value="">Choose a team</option>';
+      teams.forEach((team) => {
+        const option = document.createElement("option");
+        option.value = team;
+        option.textContent = team;
+        el.loginTeam.appendChild(option);
+      });
+      el.loginTeam.value = state.loginTeam;
+    }
+
+    function populateProfilesForTeam(team) {
+      state.loginTeam = team;
+      state.loginProfileId = "";
+      el.loginProfile.innerHTML = '<option value="">Choose a saved profile</option>';
+      el.loginProfile.disabled = !team;
+      el.loginPin.value = "";
+      el.loginPin.disabled = !team;
+
+      if (!team) {
+        return;
+      }
+
+      state.data.profiles
+        .filter((profile) => profile.team === team)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach((profile) => {
+          const option = document.createElement("option");
+          option.value = profile.id;
+          option.textContent = profile.name;
+          el.loginProfile.appendChild(option);
+        });
+    }
+
+    function renderTables() {
+      const individual = buildIndividualLeaderboard(state.data.logs);
+      const team = buildTeamLeaderboard(state.data.logs);
+
+      el.individualBody.innerHTML = individual.length
+        ? individual.map((row, index) => `
+            <tr class="${index === 0 ? "table-row--top" : ""}">
+              <td><span class="rank-pill">#${index + 1}</span></td>
+              <td><strong>${row.name}</strong><span>${row.team}</span></td>
+              <td>${stepsFormat(row.totalSteps)}</td>
+              <td>${row.entries}</td>
+              <td>${stepsFormat(row.averagePerDay)}</td>
+            </tr>
+          `).join("")
+        : '<tr><td colspan="5" class="empty-state"><strong>No activity yet</strong><p>Profiles will appear here once steps are logged.</p></td></tr>';
+
+      el.teamBody.innerHTML = team.length
+        ? team.map((row, index) => `
+            <tr class="${index === 0 ? "table-row--top" : ""}">
+              <td><span class="rank-pill">#${index + 1}</span></td>
+              <td><strong>${row.team}</strong><span>${row.memberCount} member${row.memberCount === 1 ? "" : "s"}</span></td>
+              <td>${stepsFormat(row.totalSteps)}</td>
+              <td>${row.memberCount}</td>
+              <td>${row.entries}</td>
+            </tr>
+          `).join("")
+        : '<tr><td colspan="5" class="empty-state"><strong>No activity yet</strong><p>Teams will appear here once colleagues submit activity.</p></td></tr>';
+    }
+
+    function renderSummary() {
+      const summary = getSummary(state.data.logs);
+      el.metricTotal.textContent = stepsFormat(summary.totalSteps);
+      el.metricParticipants.textContent = summary.participants;
+      el.metricTeams.textContent = summary.teams;
+      el.metricFront.textContent = summary.leadingIndividual ? summary.leadingIndividual.name : "None yet";
+      el.metricSub.textContent = summary.leadingTeam ? `Top team: ${summary.leadingTeam.team}` : "Add logs to start the challenge";
+    }
+
+    function renderLogState() {
+      const activeProfile = getActiveProfile();
+      if (activeProfile) {
+        el.activeProfile.classList.remove("empty-inline");
+        el.activeProfile.innerHTML = `<span>Current profile</span><strong>${activeProfile.name}</strong><p>${activeProfile.team}</p>`;
+        el.logSteps.disabled = false;
+        el.logSubmit.disabled = false;
+      } else {
+        el.activeProfile.classList.add("empty-inline");
+        el.activeProfile.textContent = "Log in to enable step entry.";
+        el.logSteps.disabled = true;
+        el.logSubmit.disabled = true;
+      }
+    }
+
+    function render() {
+      saveData(state.data);
+      populateTeams();
+      renderSummary();
+      renderTables();
+      renderLogState();
+      setStatus(state.statusText);
+      showTab(state.activeTab);
+    }
+
+    function upsertProfile(name, team, pin) {
+      const normalizedKey = `${normalizeValue(name)}::${normalizeValue(team)}`;
+      const existing = state.data.profiles.find((profile) => `${normalizeValue(profile.name)}::${normalizeValue(profile.team)}` === normalizedKey);
+      if (existing) {
+        existing.name = name.trim();
+        existing.team = team.trim();
+        existing.pin = String(pin).trim();
+        return existing;
+      }
+      const newProfile = {
+        id: createId("profile"),
+        name: name.trim(),
+        team: team.trim(),
+        pin: String(pin).trim()
+      };
+      state.data.profiles.unshift(newProfile);
+      return newProfile;
+    }
+
+    function logoutToAccess() {
+      state.loggedInProfileId = "";
+      state.loginTeam = "";
+      state.loginProfileId = "";
+      el.loginTeam.value = "";
+      el.loginProfile.innerHTML = '<option value="">Choose a saved profile</option>';
+      el.loginProfile.disabled = true;
+      el.loginPin.value = "";
+      el.loginPin.disabled = true;
+      el.logSteps.value = "";
+      state.statusText = "Create a profile or log in to start.";
+      state.activeTab = "access";
+      render();
+    }
+
+    document.querySelectorAll(".tab-button").forEach((button) => {
+      button.addEventListener("click", () => showTab(button.dataset.tab));
+    });
+
+    el.logoutButton.addEventListener("click", logoutToAccess);
+
+    el.loginTeam.addEventListener("change", (event) => {
+      populateProfilesForTeam(event.target.value);
+    });
+
+    el.loginProfile.addEventListener("change", (event) => {
+      state.loginProfileId = event.target.value;
+      el.loginPin.disabled = !state.loginProfileId;
+    });
+
+    el.createProfileForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const name = String(form.get("name") || "").trim();
+      const team = String(form.get("team") || "").trim();
+      const pin = String(form.get("pin") || "").trim();
+
+      if (!name || !team) {
+        state.statusText = "Enter both a name and a team to create a profile.";
+        render();
+        return;
+      }
+
+      if (!pin) {
+        state.statusText = "Choose a PIN to protect this profile.";
+        render();
+        return;
+      }
+
+      const profile = upsertProfile(name, team, pin);
+      state.loggedInProfileId = profile.id;
+      state.loginTeam = profile.team;
+      state.loginProfileId = profile.id;
+      state.statusText = `${profile.name} is ready to log steps.`;
+      state.activeTab = "log";
+      event.currentTarget.reset();
+      populateProfilesForTeam(profile.team);
+      el.loginTeam.value = profile.team;
+      el.loginProfile.value = profile.id;
+      el.loginPin.disabled = false;
+      render();
+    });
+
+    el.loginForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const selectedProfile = state.data.profiles.find((profile) => profile.id === state.loginProfileId);
+      const pin = String(el.loginPin.value || "").trim();
+
+      if (!state.loginTeam) {
+        state.statusText = "Choose your team first.";
+        render();
+        return;
+      }
+
+      if (!selectedProfile) {
+        state.statusText = "Choose your saved profile first.";
+        render();
+        return;
+      }
+
+      if (selectedProfile.team !== state.loginTeam) {
+        state.statusText = "The selected profile does not belong to that team.";
+        render();
+        return;
+      }
+
+      if (selectedProfile.pin !== pin) {
+        state.statusText = "Incorrect PIN. Try again.";
+        render();
+        return;
+      }
+
+      state.loggedInProfileId = selectedProfile.id;
+      state.statusText = `Welcome back, ${selectedProfile.name}.`;
+      state.activeTab = "log";
+      el.loginPin.value = "";
+      render();
+    });
+
+    el.logForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const activeProfile = getActiveProfile();
+      const parsedSteps = Number(el.logSteps.value);
+
+      if (!activeProfile) {
+        state.statusText = "Log in before submitting steps.";
+        render();
+        return;
+      }
+
+      if (!Number.isFinite(parsedSteps) || parsedSteps <= 0) {
+        state.statusText = "Enter a step total greater than zero.";
+        render();
+        return;
+      }
+
+      state.data.logs.unshift({
+        id: createId("log"),
+        profileId: activeProfile.id,
+        name: activeProfile.name,
+        team: activeProfile.team,
+        date: el.logDate.value,
+        steps: parsedSteps
+      });
+
+      el.logSteps.value = "";
+      state.statusText = `Logged ${stepsFormat(parsedSteps)} steps for ${activeProfile.name}.`;
+      render();
+    });
+
+    el.logDate.value = state.logDate;
+    el.logDate.addEventListener("change", (event) => {
+      state.logDate = event.target.value;
+    });
+
+    render();
+  </script>
+</body>
+</html>
