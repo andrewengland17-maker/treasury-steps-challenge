@@ -71,6 +71,7 @@
     .panel__subtle, .status-text, .metric-card__helper, .field span, .panel-card__header span, .empty-inline, .active-profile-card span { color: var(--muted); line-height: 1.6; }
 
     .dashboard-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .dashboard-actions { display: flex; align-items: center; gap: 12px; }
     .top-tabs, .view-switcher { display: inline-flex; gap: 10px; padding: 8px; border-radius: 999px; width: fit-content; }
     .tab-button, .logout-card {
       border: 0;
@@ -165,6 +166,7 @@
       .dashboard-bar { flex-direction: column; align-items: stretch; }
       .top-tabs { width: 100%; justify-content: stretch; }
       .tab-button { flex: 1; }
+      .dashboard-actions { width: 100%; flex-direction: column; align-items: stretch; }
       .logout-card { width: 100%; }
       .form-grid, .form-grid--wide { grid-template-columns: 1fr; }
       .page-header, .panel, .metric-card { padding: 18px; }
@@ -189,7 +191,10 @@
           <button type="button" class="tab-button tab-button--active" data-tab="log">Log exercise</button>
           <button type="button" class="tab-button" data-tab="leaderboards">Leaderboards</button>
         </div>
-        <button type="button" class="logout-card" id="logout-button">Log out</button>
+        <div class="dashboard-actions">
+          <button type="button" class="logout-card" id="export-button">Export Data</button>
+          <button type="button" class="logout-card" id="logout-button">Log out</button>
+        </div>
       </section>
 
       <section id="access-tab" class="log-view">
@@ -258,15 +263,6 @@
       </section>
 
       <section id="leaderboard-tab" class="leaderboard-shell" hidden>
-        <section class="panel panel--compact panel--toolbar">
-          <div>
-            <p class="section-kicker">Export</p>
-            <h2>Download competition workbook</h2>
-            <p class="panel__subtle">Exports individual leaderboard, team leaderboard, and the raw log data into one Excel file.</p>
-          </div>
-          <button type="button" class="primary-button primary-button--auto" id="export-button">Export workbook</button>
-        </section>
-
         <div class="metric-grid">
           <article class="metric-card"><span class="metric-card__label">Total steps</span><strong class="metric-card__value metric-card__value--teal" id="metric-total">0</strong><span class="metric-card__helper">Across every submitted log</span></article>
           <article class="metric-card"><span class="metric-card__label">Participants</span><strong class="metric-card__value metric-card__value--gold" id="metric-participants">0</strong><span class="metric-card__helper">Unique people on the board</span></article>
