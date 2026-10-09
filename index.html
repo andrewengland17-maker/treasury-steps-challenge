@@ -631,12 +631,10 @@
       showTab(state.activeTab);
     }
 
-    async function upsertProfile(name, team, pin) {
+    function upsertProfile(name, team, pinSalt, pinHash) {
       const normalizedKey = `${normalizeValue(name)}::${normalizeValue(team)}`;
       const existing = state.data.profiles.find((profile) => `${normalizeValue(profile.name)}::${normalizeValue(profile.team)}` === normalizedKey);
       const now = getNowIso();
-      const pinSalt = getRandomSalt();
-      const pinHash = await hashPin(pin, pinSalt);
 
       if (existing) {
         existing.name = name.trim();
@@ -644,7 +642,6 @@
         existing.pinSalt = pinSalt;
         existing.pinHash = pinHash;
         existing.updatedAt = now;
-        await persistProfile(existing);
         return existing;
       }
 
@@ -658,7 +655,6 @@
         updatedAt: now
       };
       state.data.profiles.unshift(newProfile);
-      await persistProfile(newProfile);
       return newProfile;
     }
 
@@ -721,7 +717,9 @@
         return;
       }
 
-      const profile = await upsertProfile(name, team, pin);
+      const pinSalt = getRandomSalt();
+      const pinHash = await hashPin(pin, pinSalt);
+      const profile = upsertProfile(name, team, pinSalt, pinHash);
       state.loggedInProfileId = profile.id;
       state.loginTeam = profile.team;
       state.loginProfileId = profile.id;
@@ -733,6 +731,11 @@
       el.loginProfile.value = profile.id;
       el.loginPin.disabled = false;
       render();
+
+      persistProfile(profile).catch((error) => {
+        state.statusText = `Profile save failed: ${error.message}`;
+        render();
+      });
     });
 
     el.loginForm.addEventListener("submit", async (event) => {
@@ -800,11 +803,14 @@
       };
 
       state.data.logs.unshift(newLog);
-      await persistLog(newLog);
-
       el.logSteps.value = "";
       state.statusText = `Logged ${stepsFormat(parsedSteps)} steps for ${activeProfile.name}.`;
       render();
+
+      persistLog(newLog).catch((error) => {
+        state.statusText = `Log save failed: ${error.message}`;
+        render();
+      });
     });
 
     el.logDate.value = state.logDate;
