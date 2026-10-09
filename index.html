@@ -728,9 +728,6 @@
       state.statusText = `${profile.name} is ready to log steps.`;
       state.activeTab = "log";
       event.currentTarget.reset();
-      if (useFirestore) {
-        await refreshFromSource();
-      }
       populateProfilesForTeam(profile.team);
       el.loginTeam.value = profile.team;
       el.loginProfile.value = profile.id;
@@ -804,9 +801,6 @@
 
       state.data.logs.unshift(newLog);
       await persistLog(newLog);
-      if (useFirestore) {
-        await refreshFromSource();
-      }
 
       el.logSteps.value = "";
       state.statusText = `Logged ${stepsFormat(parsedSteps)} steps for ${activeProfile.name}.`;
