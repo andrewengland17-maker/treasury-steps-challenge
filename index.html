@@ -114,6 +114,27 @@
     .form-grid--wide { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; }
     .field { display: grid; gap: 8px; }
     .field--full { grid-column: 1 / -1; }
+    .date-picker { position: relative; display: flex; gap: 8px; }
+    .date-picker input { min-width: 0; }
+    .date-picker-button {
+      flex: 0 0 50px;
+      border: 1px solid rgba(181, 206, 255, 0.16);
+      border-radius: 16px;
+      background: rgba(7, 13, 25, 0.72);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 1.15rem;
+    }
+    .date-picker-button:hover { background: rgba(99, 230, 190, 0.14); }
+    .date-picker-native {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 50px;
+      height: 50px;
+      opacity: 0;
+      pointer-events: none;
+    }
     input, select {
       width: 100%;
       border: 1px solid rgba(181, 206, 255, 0.16);
@@ -223,7 +244,7 @@
           </div>
 
           <form id="log-form" class="form-grid form-grid--wide">
-            <label class="field"><span>Date</span><input id="log-date" type="date" required /></label>
+            <label class="field"><span>Date</span><div class="date-picker"><input id="log-date" type="text" inputmode="numeric" placeholder="DD/MM/YYYY" pattern="\\d{2}/\\d{2}/\\d{4}" required /><button id="date-picker-button" class="date-picker-button" type="button" aria-label="Choose date" title="Choose date">&#128197;</button><input id="log-date-picker" class="date-picker-native" type="date" tabindex="-1" aria-hidden="true" /></div></label>
             <label class="field"><span>Steps</span><input id="log-steps" type="number" min="0" step="1" placeholder="12000" required disabled /></label>
             <button id="log-submit" class="primary-button" type="submit" disabled>Submit activity</button>
           </form>
@@ -317,6 +338,26 @@
 
     function getTodayValue() {
       return new Date().toISOString().slice(0, 10);
+    }
+
+    function formatDisplayDate(isoDate) {
+      const [year, month, day] = String(isoDate || "").split("-");
+      return year && month && day ? `${day}/${month}/${year}` : "";
+    }
+
+    function parseDisplayDate(displayDate) {
+      const match = String(displayDate || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!match) {
+        return "";
+      }
+
+      const [, day, month, year] = match;
+      const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+      if (parsed.getUTCFullYear() !== Number(year) || parsed.getUTCMonth() !== Number(month) - 1 || parsed.getUTCDate() !== Number(day)) {
+        return "";
+      }
+
+      return `${year}-${month}-${day}`;
     }
 
     function getNowIso() {
@@ -540,6 +581,8 @@
       activeProfile: document.getElementById("active-profile"),
       logForm: document.getElementById("log-form"),
       logDate: document.getElementById("log-date"),
+      logDatePicker: document.getElementById("log-date-picker"),
+      datePickerButton: document.getElementById("date-picker-button"),
       logSteps: document.getElementById("log-steps"),
       logSubmit: document.getElementById("log-submit"),
       statusText: document.getElementById("status-text"),
@@ -722,7 +765,7 @@
         profileId: activeProfile.id,
         name: activeProfile.name,
         team: activeProfile.team,
-        date: el.logDate.value,
+          date: state.logDate,
         steps: parsedSteps,
         createdAt: getNowIso()
       };
@@ -738,9 +781,23 @@
       });
     });
 
-    el.logDate.value = state.logDate;
+    el.logDate.value = formatDisplayDate(state.logDate);
+    el.logDatePicker.value = state.logDate;
     el.logDate.addEventListener("change", (event) => {
+      const parsedDate = parseDisplayDate(event.target.value);
+      event.target.setCustomValidity(parsedDate ? "" : "Enter a valid date in DD/MM/YYYY format.");
+      if (parsedDate) {
+        state.logDate = parsedDate;
+        el.logDatePicker.value = parsedDate;
+      }
+    });
+    el.datePickerButton.addEventListener("click", () => {
+      el.logDatePicker.showPicker();
+    });
+    el.logDatePicker.addEventListener("change", (event) => {
       state.logDate = event.target.value;
+      el.logDate.value = formatDisplayDate(state.logDate);
+      el.logDate.setCustomValidity("");
     });
 
     if (useFirestore) {
@@ -753,6 +810,7 @@
       }, 20000);
     }
 
+    render();
     try {
       state.data = await loadData();
       render();
