@@ -146,10 +146,12 @@
     table { width: 100%; border-collapse: collapse; }
     .individual-table { table-layout: fixed; }
     .individual-table th:nth-child(1), .individual-table td:nth-child(1) { width: 10%; }
-    .individual-table th:nth-child(2), .individual-table td:nth-child(2) { width: 36%; }
+    .individual-table th:nth-child(2), .individual-table td:nth-child(2) { width: 38%; padding-left: 24px; }
     .individual-table th:nth-child(3), .individual-table td:nth-child(3) { width: 16%; }
     .individual-table th:nth-child(4), .individual-table td:nth-child(4) { width: 14%; }
-    .individual-table th:nth-child(5), .individual-table td:nth-child(5) { width: 24%; }
+    .individual-table th:nth-child(5), .individual-table td:nth-child(5) { width: 18%; }
+    #team-body td, #team-body th { vertical-align: middle; }
+    #team-body td, #team-body th { padding-top: 13px; padding-bottom: 13px; }
     th, td { padding: 16px 14px; border-bottom: 1px solid rgba(181, 206, 255, 0.12); text-align: left; vertical-align: top; }
     th { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
     td strong { display: block; margin-bottom: 4px; }
@@ -633,7 +635,7 @@
         ? team.map((row, index) => `
             <tr class="${index === 0 ? "table-row--top" : ""}">
               <td><span class="rank-pill">#${index + 1}</span></td>
-              <td><strong>${row.team}</strong><span>${row.memberCount} member${row.memberCount === 1 ? "" : "s"}</span></td>
+              <td><strong>${row.team}</strong></td>
               <td>${stepsFormat(row.totalSteps)}</td>
               <td>${row.memberCount}</td>
               <td>${row.gamesPoints.toFixed(2)}</td>
