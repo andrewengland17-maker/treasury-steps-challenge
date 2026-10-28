@@ -90,6 +90,7 @@
     .log-view { grid-template-columns: 1fr; }
 
     .panel, .metric-card { padding: 22px; }
+    .leaderboard-panel { padding-top: 4px; }
     .panel--highlight { background: linear-gradient(160deg, rgba(18, 32, 58, 0.96), rgba(13, 22, 41, 0.9)); }
     .panel--stacked { display: grid; gap: 20px; }
     .panel__heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
@@ -170,6 +171,7 @@
       .logout-card { width: 100%; }
       .form-grid, .form-grid--wide { grid-template-columns: 1fr; }
       .page-header, .panel, .metric-card { padding: 18px; }
+      .leaderboard-panel { padding-top: 4px; }
     }
   </style>
 </head>
@@ -182,7 +184,7 @@
       <header class="page-header">
         <div>
           <p class="eyebrow">Treasury wellbeing challenge</p>
-          <h1>Treasury Steps Challenge</h1>
+          <h1>Treasury Games Steps Challenge</h1>
         </div>
       </header>
 
@@ -234,15 +236,14 @@
           <article class="metric-card"><span class="metric-card__label">Total steps</span><strong class="metric-card__value metric-card__value--teal" id="metric-total">0</strong><span class="metric-card__helper">Across every submitted log</span></article>
           <article class="metric-card"><span class="metric-card__label">Participants</span><strong class="metric-card__value metric-card__value--gold" id="metric-participants">0</strong><span class="metric-card__helper">Unique people on the board</span></article>
           <article class="metric-card"><span class="metric-card__label">Teams</span><strong class="metric-card__value metric-card__value--indigo" id="metric-teams">0</strong><span class="metric-card__helper">Teams currently represented</span></article>
-          <article class="metric-card"><span class="metric-card__label">Front-runner</span><strong class="metric-card__value metric-card__value--rose" id="metric-front">None yet</strong><span class="metric-card__helper" id="metric-sub">Add logs to start the challenge</span></article>
+          <article class="metric-card"><span class="metric-card__label">Hot Stepper</span><strong class="metric-card__value metric-card__value--rose" id="metric-front">None yet</strong><span class="metric-card__helper" id="metric-sub">Add logs to start the challenge</span></article>
         </div>
 
         <div class="leaderboard-grid">
-          <section class="panel">
+          <section class="panel leaderboard-panel">
             <div class="panel__heading panel__heading--table">
               <div>
-                <p class="section-kicker">Leaderboard</p>
-                <h2>Individual leaderboard</h2>
+                <h2>Individual Leaderboard</h2>
               </div>
               <p class="panel__subtle">Ranked by total steps per colleague.</p>
             </div>
@@ -256,13 +257,12 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel leaderboard-panel">
             <div class="panel__heading panel__heading--table">
               <div>
-                <p class="section-kicker">Leaderboard</p>
-                <h2>Team leaderboard</h2>
+                <h2>Team Leaderboard</h2>
               </div>
-              <p class="panel__subtle">Ranked by total steps per team.</p>
+              <p class="panel__subtle">Ranked by Games Points</p>
             </div>
             <div class="table-wrap">
               <table>
