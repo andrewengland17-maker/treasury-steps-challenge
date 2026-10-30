@@ -204,6 +204,7 @@
           <button type="button" class="tab-button" data-tab="leaderboards">Leaderboards</button>
         </div>
         <div class="dashboard-actions">
+          <button type="button" class="logout-card" id="refresh-button" title="Refresh leaderboard">Refresh leaderboard</button>
           <button type="button" class="logout-card" id="export-button">Export Data</button>
         </div>
       </section>
@@ -563,7 +564,8 @@
       metricSub: document.getElementById("metric-sub"),
       individualBody: document.getElementById("individual-body"),
       teamBody: document.getElementById("team-body"),
-      exportButton: document.getElementById("export-button")
+      exportButton: document.getElementById("export-button"),
+      refreshButton: document.getElementById("refresh-button")
     };
 
     function getActiveProfile() {
@@ -684,12 +686,25 @@
     }
 
     document.querySelectorAll(".tab-button").forEach((button) => {
-      button.addEventListener("click", async () => {
-        if (useFirestore) {
-          await refreshFromSource();
-        }
+      button.addEventListener("click", () => {
         showTab(button.dataset.tab);
       });
+    });
+
+    el.refreshButton.addEventListener("click", async () => {
+      if (el.refreshButton.disabled) {
+        return;
+      }
+      el.refreshButton.disabled = true;
+      el.refreshButton.textContent = "Refreshing...";
+      try {
+        await refreshFromSource();
+      } catch (error) {
+        window.alert(`Unable to refresh leaderboard: ${error.message}`);
+      } finally {
+        el.refreshButton.disabled = false;
+        el.refreshButton.textContent = "Refresh leaderboard";
+      }
     });
 
     el.exportButton.addEventListener("click", () => {
@@ -755,16 +770,6 @@
     el.logDate.addEventListener("change", (event) => {
       state.logDate = event.target.value;
     });
-
-    if (useFirestore) {
-      window.setInterval(async () => {
-        try {
-          await refreshFromSource();
-        } catch (error) {
-          console.error("Auto-refresh failed", error);
-        }
-      }, 20000);
-    }
 
     render();
     try {
