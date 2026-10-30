@@ -405,6 +405,9 @@
     function buildIndividualLeaderboard(logs) {
       const grouped = new Map();
       logs.forEach((log) => {
+        if (!(log.date >= CHALLENGE_START && log.date <= CHALLENGE_END)) {
+          return;
+        }
         const existing = grouped.get(log.profileId) || {
           id: log.profileId,
           name: log.name,
@@ -461,7 +464,7 @@
       const individual = buildIndividualLeaderboard(logs);
       const team = buildTeamLeaderboard(logs);
       return {
-        totalSteps: logs.reduce((sum, log) => sum + Number(log.steps || 0), 0),
+        totalSteps: individual.reduce((sum, row) => sum + row.totalSteps, 0),
         participants: individual.length,
         teams: team.length,
         leadingIndividual: individual[0] || null,
