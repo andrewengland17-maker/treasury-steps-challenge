@@ -136,6 +136,12 @@
       cursor: pointer;
     }
     .primary-button--wide { width: 100%; }
+    .primary-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .confirm-overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: rgba(4, 9, 18, 0.6); }
+    .confirm-card { display: grid; gap: 16px; justify-items: center; max-width: 440px; padding: 28px; text-align: center; border-radius: 24px; border: 1px solid var(--teal); background: rgba(12, 20, 38, 0.97); box-shadow: var(--shadow); }
+    .confirm-card--error { border-color: var(--rose); }
+    .confirm-card p { margin: 0; font-size: 1.15rem; line-height: 1.5; }
 
     .active-profile-card, .empty-inline, .empty-state {
       border-radius: 18px;
@@ -287,6 +293,13 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="confirm-overlay" class="confirm-overlay" hidden>
+    <div id="confirm-card" class="confirm-card" role="alertdialog" aria-live="assertive" aria-labelledby="confirm-message">
+      <p id="confirm-message"></p>
+      <button type="button" id="confirm-close" class="primary-button">OK</button>
+    </div>
   </div>
 
   <script type="module">
@@ -565,8 +578,33 @@
       individualBody: document.getElementById("individual-body"),
       teamBody: document.getElementById("team-body"),
       exportButton: document.getElementById("export-button"),
-      refreshButton: document.getElementById("refresh-button")
+      refreshButton: document.getElementById("refresh-button"),
+      confirmOverlay: document.getElementById("confirm-overlay"),
+      confirmCard: document.getElementById("confirm-card"),
+      confirmMessage: document.getElementById("confirm-message"),
+      confirmClose: document.getElementById("confirm-close")
     };
+
+    let confirmTimer;
+
+    function showConfirmation(message, isError = false) {
+      window.clearTimeout(confirmTimer);
+      el.confirmMessage.textContent = message;
+      el.confirmCard.classList.toggle("confirm-card--error", isError);
+      el.confirmOverlay.hidden = false;
+      el.confirmClose.focus();
+      confirmTimer = window.setTimeout(hideConfirmation, isError ? 8000 : 4000);
+    }
+
+    function hideConfirmation() {
+      window.clearTimeout(confirmTimer);
+      el.confirmOverlay.hidden = true;
+    }
+
+    function formatDisplayDate(isoDate) {
+      const [year, month, day] = String(isoDate || "").split("-");
+      return `${day}/${month}/${year}`;
+    }
 
     function getActiveProfile() {
       return state.data.profiles.find((profile) => profile.id === state.selectedProfileId) || null;
@@ -760,10 +798,24 @@
       state.statusText = `Logged ${stepsFormat(parsedSteps)} steps for ${activeProfile.name}.`;
       render();
 
-      persistLog(newLog).catch((error) => {
-        state.statusText = `Log save failed: ${error.message}`;
-        render();
-      });
+      el.logSubmit.disabled = true;
+      el.logSubmit.textContent = "Saving...";
+      try {
+        await persistLog(newLog);
+        showConfirmation(`${stepsFormat(newLog.steps)} steps have been logged for ${newLog.name} on ${formatDisplayDate(newLog.date)}`);
+      } catch (error) {
+        showConfirmation(`Log save failed: ${error.message}. Please check the leaderboard before trying again.`, true);
+      } finally {
+        el.logSubmit.textContent = "Submit activity";
+        renderLogState();
+      }
+    });
+
+    el.confirmClose.addEventListener("click", hideConfirmation);
+    el.confirmOverlay.addEventListener("click", (event) => {
+      if (event.target === el.confirmOverlay) {
+        hideConfirmation();
+      }
     });
 
     el.logDate.value = state.logDate;
